@@ -26,21 +26,20 @@ from sagemaker_training import environment, errors, logging_config, process, tim
 from inspect import isclass
 
 logger = logging_config.get_logger()
+logging.getLogger("paramiko").setLevel(logging.INFO)
+
 try:
     from smdistributed.dataparallel import exceptions
+
     # list of exceptions SMDDP wants training toolkit to catch and log
     exception_classes = [x for x in dir(exceptions) if isclass(getattr(exceptions, x))]
 except ImportError as e:
     logger.info("No exception classes found in smdistributed.dataparallel")
-    exception_classes = []
-
-
-logging.getLogger("paramiko").setLevel(logging.INFO)
+    exception_classes = [errors.ExecuteUserScriptError]
 
 
 class SMDataParallelRunner(process.ProcessRunner):
     """Prepare SMDataParallel-based distributed training.
-
     This includes setup of smddprun command via MPI and synchronizing work
     with the worker nodes.
     """
@@ -59,10 +58,8 @@ class SMDataParallelRunner(process.ProcessRunner):
         timeout_in_seconds=60 * 60,
     ):
         """Initialize a SMDataParallelRunner.
-
         SMDataParallelRunner is responsible for preparing distributed
         training with MPI and synchronizing work among the Workers.
-
         Args:
             user_entry_point (str): The name of the user entry point.
             args ([str]): A list of arguments to include when executing the entry point.
@@ -213,7 +210,6 @@ class SMDataParallelRunner(process.ProcessRunner):
 
     def _create_command(self):
         """Create mpi-based smddprun command.
-
         Based on the number of hosts, smddprun command differs.
         Single-node: SMDATAPARALLEL_USE_SINGLENODE flag set to 1
         Multi-node: SMDATAPARALLEL_USE_HOMOGENEOUS flag set to 1
@@ -231,7 +227,9 @@ class SMDataParallelRunner(process.ProcessRunner):
             # homogeneous mode uses 16 processes per host; 8 server; 8 worker
             smdataparallel_server_addr = self._master_hostname
             smdataparallel_server_port = 7592
-            host_list = ["{}:{}".format(host, num_processes_per_host) for host in self._hosts]
+            host_list = [
+                "{}:{}".format(host, num_processes_per_host) for host in self._hosts
+            ]
             smdataparallel_flag = "SMDATAPARALLEL_USE_HOMOGENEOUS=1"
             command = self._get_mpirun_command(
                 num_hosts,
@@ -252,20 +250,17 @@ class SMDataParallelRunner(process.ProcessRunner):
 
     def _python_command(self):
         """Use mpi4py to force processes to abort if an uncaught exception occurs.
-
         https://docs.chainer.org/en/stable/chainermn/tutorial/tips_faqs.html#mpi-process-hangs-after-an-unhandled-python-exception
         """
         return super(SMDataParallelRunner, self)._python_command() + ["-m", "mpi4py"]
 
     def run(self, wait=True, capture_error=False):
         """Run the process.
-
         Args:
             wait (bool): A boolean indicating whether to wait and check for errors.
                 Defaults to True.
             capture_error (bool): A boolean indicating whether to direct stderr to a stream
                 that can later be read. Defaults to False.
-
         Returns:
             process (subprocess.Popen): The spawned process.
         """
@@ -296,17 +291,12 @@ class SMDataParallelRunner(process.ProcessRunner):
 
 _SSH_DAEMON_NOT_FOUND_ERROR_MESSAGE = """
 SSH daemon not found, please install SSH to allow MPI to communicate different nodes in cluster.
-
 You can install ssh by running following commands:
 -------------------------------------------------
-
 1. Install SSH via apt-get:
-
 apt-get update && apt-get install -y --no-install-recommends openssh-server && mkdir -p /var/run/sshd
-
 2. SSH login fix. Otherwise user is kicked off after login:
 sed 's@session\\s*required\\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
-
 3. Create SSH key to allow password less ssh between different docker instances:
 mkdir -p /root/.ssh/ && ssh-keygen -q -t rsa -N '' -f /root/.ssh/id_rsa && \
 cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys && \
@@ -326,7 +316,6 @@ def _start_sshd_daemon():  # type: () -> None
 def _can_connect(host, port=22):
     # type: (str, int) -> bool
     """Check if the connection to provided ``host`` and ``port`` is possible.
-
     Args:
         host (str): Hostname for the host to check connection.
         port (int): Port name of the host to check connection on.

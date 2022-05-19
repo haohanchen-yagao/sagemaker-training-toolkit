@@ -27,6 +27,8 @@ from sagemaker_training import environment, errors, logging_config, process, tim
 from inspect import isclass
 
 logger = logging_config.get_logger()
+logging.getLogger("paramiko").setLevel(logging.INFO)
+
 try:
     from smdistributed.modelparallel.backend import exceptions
     # list of exceptions SMMP wants training toolkit to catch and log
@@ -40,9 +42,6 @@ try:
     exception_classes += [x for x in dir(torch_exceptions) if isclass(getattr(torch_exceptions, x))]
 except ImportError as e:
     logger.info("No torch exception classes found in smdistributed.modelparallel")
-
-
-logging.getLogger("paramiko").setLevel(logging.INFO)
 
 
 class WorkerRunner(process.ProcessRunner):
