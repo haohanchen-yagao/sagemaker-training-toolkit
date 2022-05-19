@@ -35,6 +35,7 @@ from sagemaker_training import (
 # Default limit of the stream is 2 ** 16 KB, we can increase it to 128KB in subproc call
 _DEFAULT_BUF_SIZE = 1024 * 64
 
+
 async def watch(stream, error_classes, proc_per_host):
     """Process the stdout and stderr streams on the fly.
     Decode the output lines
@@ -87,7 +88,7 @@ async def watch(stream, error_classes, proc_per_host):
 
             if start:
                 if err_line not in output:
-                    output.append(err_line.strip(" :\n")  + "\n")
+                    output.append(err_line.strip(" :\n") + "\n")
             else:
                 if any(err in err_line for err in (_PYTHON_ERRORS_ + error_classes)):
                     # start logging error message if target exceptions found
@@ -124,13 +125,22 @@ async def run_async(cmd, error_classes, processes_per_host, env, cwd, stderr, **
     )
 
     output = await asyncio.gather(
-        watch(proc.stdout, error_classes, processes_per_host), watch(proc.stderr, error_classes, processes_per_host)
+        watch(proc.stdout, error_classes, processes_per_host),
+        watch(proc.stderr, error_classes, processes_per_host),
     )
     return_code = proc.returncode
     return return_code, output, proc
 
 
-def create(cmd, error_classes, processes_per_host, cwd=None, env=None, capture_error=False, **kwargs):
+def create(
+    cmd,
+    error_classes,
+    processes_per_host,
+    cwd=None,
+    env=None,
+    capture_error=False,
+    **kwargs,
+):
     """Spawn a process with asyncio for the given command.
 
     Args:
@@ -164,10 +174,16 @@ def create(cmd, error_classes, processes_per_host, cwd=None, env=None, capture_e
         )
         return rc, output, proc
     except Exception as e:  # pylint: disable=broad-except
-        six.reraise(errors.ExecuteUserScriptError, errors.ExecuteUserScriptError(e), sys.exc_info()[2])
+        six.reraise(
+            errors.ExecuteUserScriptError,
+            errors.ExecuteUserScriptError(e),
+            sys.exc_info()[2],
+        )
 
 
-def check_error(cmd, error_classes, processes_per_host, cwd=None, capture_error=True, **kwargs):
+def check_error(
+    cmd, error_classes, processes_per_host, cwd=None, capture_error=True, **kwargs
+):
     """Run a commmand, raising an exception if there is an error.
 
     Args:
@@ -204,7 +220,11 @@ def check_error(cmd, error_classes, processes_per_host, cwd=None, capture_error=
         # remove extra quotes for subprocess.Popen
         cmd[-1] = cmd[-1].strip('"')
         process = subprocess.Popen(
-            cmd, env=os.environ, cwd=cwd or environment.code_dir, stderr=stderr, **kwargs
+            cmd,
+            env=os.environ,
+            cwd=cwd or environment.code_dir,
+            stderr=stderr,
+            **kwargs,
         )
         return_code = process.wait()
     if return_code:
@@ -237,7 +257,9 @@ def python_executable():
         (str): The real path of the current Python executable.
     """
     if not sys.executable:
-        raise RuntimeError("Failed to retrieve the real path for the Python executable binary")
+        raise RuntimeError(
+            "Failed to retrieve the real path for the Python executable binary"
+        )
     return sys.executable
 
 
@@ -259,7 +281,9 @@ class ProcessRunner(object):
         self._processes_per_host = processes_per_host
 
     def _create_command(self):
-        entrypoint_type = _entry_point_type.get(environment.code_dir, self._user_entry_point)
+        entrypoint_type = _entry_point_type.get(
+            environment.code_dir, self._user_entry_point
+        )
 
         if entrypoint_type is _entry_point_type.PYTHON_PACKAGE:
             entry_module = self._user_entry_point.replace(".py", "")
@@ -271,7 +295,11 @@ class ProcessRunner(object):
                 six.moves.shlex_quote(arg)  # pylint: disable=too-many-function-args
                 for arg in self._args
             ]
-            return ["/bin/sh", "-c", '"./%s %s"' % (self._user_entry_point, " ".join(args))]
+            return [
+                "/bin/sh",
+                "-c",
+                '"./%s %s"' % (self._user_entry_point, " ".join(args)),
+            ]
 
     def _python_command(self):  # pylint: disable=no-self-use
         return [python_executable()]
