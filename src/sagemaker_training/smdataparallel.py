@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Contains functionality related to SM Distributed Data Parallel Training."""
 import argparse
-import inspect
+from inspect import getfile, isclass
 import json
 import logging
 import os
@@ -23,7 +23,7 @@ import paramiko
 
 import gethostname
 from sagemaker_training import environment, errors, logging_config, process, timeout
-from inspect import isclass
+
 
 logger = logging_config.get_logger()
 logging.getLogger("paramiko").setLevel(logging.INFO)
@@ -33,7 +33,7 @@ try:
 
     # list of exceptions SMDDP wants training toolkit to catch and log
     exception_classes = [x for x in dir(exceptions) if isclass(getattr(exceptions, x))]
-except ImportError as e:
+except ImportError:
     logger.info("No exception classes found in smdistributed.dataparallel")
     exception_classes = [errors.ExecuteUserScriptError]
 
@@ -173,7 +173,7 @@ class SMDataParallelRunner(process.ProcessRunner):
             "-x",
             "RDMAV_FORK_SAFE=1",
             "-x",
-            "LD_PRELOAD=%s" % inspect.getfile(gethostname),
+            "LD_PRELOAD=%s" % getfile(gethostname),
         ]
 
         mpirun_command.extend(additional_options)
@@ -231,9 +231,7 @@ class SMDataParallelRunner(process.ProcessRunner):
             # homogeneous mode uses 16 processes per host; 8 server; 8 worker
             smdataparallel_server_addr = self._master_hostname
             smdataparallel_server_port = 7592
-            host_list = [
-                "{}:{}".format(host, num_processes_per_host) for host in self._hosts
-            ]
+            host_list = ["{}:{}".format(host, num_processes_per_host) for host in self._hosts]
             smdataparallel_flag = "SMDATAPARALLEL_USE_HOMOGENEOUS=1"
             command = self._get_mpirun_command(
                 num_hosts,
