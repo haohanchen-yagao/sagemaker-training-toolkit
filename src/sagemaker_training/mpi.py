@@ -43,6 +43,8 @@ try:
     exception_classes += [x for x in dir(torch_exceptions) if isclass(getattr(torch_exceptions, x))]
 except ImportError:
     logger.info("No torch exception classes found in smdistributed.modelparallel")
+if not exception_classes:
+    exception_classes = [errors.ExecuteUserScriptError]
 
 
 class WorkerRunner(process.ProcessRunner):
