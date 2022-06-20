@@ -29,6 +29,7 @@ logger = logging_config.get_logger()
 logging.getLogger("paramiko").setLevel(logging.INFO)
 
 def set_exception_classes():
+    """Set exception classes"""
     exception_classes = []
     try:
         from smdistributed.modelparallel.backend import exceptions

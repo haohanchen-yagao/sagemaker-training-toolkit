@@ -17,7 +17,7 @@ import os
 import sys
 import textwrap
 
-from mock import call, mock_open, patch
+from mock import call, mock_open, patch, Mock
 import pytest
 
 from sagemaker_training import environment, errors, files, modules, params
